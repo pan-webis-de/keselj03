@@ -33,8 +33,7 @@ class Jsonhandler:
 
     def loadTraining(self, ratio = 0.1):
         self.ground_truth = dict() 
-	self.unknowns = [os.path.join(self.upath, text["unknown-text"]) for
-                text in self.metajson["unknown-texts"]]
+	self.unknowns = [] 
         for cand in self.candidates:
             texts = []
             for subdir, dirs, files in os.walk(os.path.join(self.corpusdir, cand)):
@@ -75,8 +74,7 @@ class Jsonhandler:
         sucscore = 0
         failscore = 0
         for i in range(len(texts)):
-        #for i in range(len(ojson["answers"])):
-            if self.ground_truth[i]== cands[i]:
+            if self.ground_truth[texts[i]]== cands[i]:
                 succ += 1
                 if scores != None:
                     sucscore += scores[i]

@@ -1,6 +1,8 @@
 from jsonhandler import Jsonhandler
 from collections import Counter
 
+import logging
+
 
 def find_ngrams(input_list, n):
     return zip(*[input_list[i:] for i in range(n)])
@@ -28,7 +30,7 @@ def create_ranking(handler, n, L):
         
         counts.append(sum(bigram_all.values()))
         bigram_profile.append(Counter(dict(bigram_all.most_common(L))))
-        text = ''    
+        text = ''
 
 # Create lists for your answers (and scores)
     authors = []
@@ -47,16 +49,38 @@ def create_ranking(handler, n, L):
         for cand_nu in range(len(handler.candidates)):
             result.append(dissimilarity(bigram_profile[cand_nu], counts[cand_nu],
                     bigram_test, counts_test))
-            author = handler.candidates[result.index(min(result))]
+        author = handler.candidates[result.index(min(result))]
      
 #    author = "oneAuthor"
         score = 1
+        logging.info("%s attributed to %s", file, author)
         authors.append(author)
         scores.append(score)
     return (authors, scores)
 
+def fit_parameters(handler):
+    n_range = [3, 4, 5, 6]
+    L_range = [500, 1000, 2000, 3000, 5000]
+#    n_range = [2,3]
+#    L_range = [20, 50, 100]
+    handler.loadTraining()
+    results = []
+    for n in n_range:
+        for L in L_range:
+            authors, scores = create_ranking(handler, n, L)
+            evaluation = handler.evalTesting(handler.unknowns, authors)
+            results.append((evaluation["accuracy"], n, L))
+    return results
+
+def main(corpus):
+    handler = Jsonhandler(corpus)
+    parameters = fit_parameters(handler)
+    acc, n, L = max(parameters, key = lambda r: r[0])
+    logging.info("Choose parameters: n=%d, l=%d", n, L)
+    handler.loadTesting()
+    authors, scores = create_ranking(handler, n, L)
+    handler.storeJson(handler.unknowns, authors, scores)
+
 # Save results to json-file out.json (passing 'scores' is optional)
-handler = Jsonhandler("./pan12I")
-handler.loadTesting()
-authors, scores = create_ranking(handler, n=5, L=500)
-handler.storeJson(handler.unknowns, authors, scores)
+logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s: %(message)s')
+main("pan12I")
