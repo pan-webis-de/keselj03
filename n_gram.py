@@ -8,8 +8,7 @@ def find_ngrams(input_list, n):
     return zip(*[input_list[i:] for i in range(n)])
 
 def dissimilarity(corpus_profile, corpus_size, unknown_profile,
-        unknown_size):
-    keys = set(corpus_profile.keys()) | set(corpus_profile.keys())
+    keys = set(corpus_profile.keys()) | set(unknown_profile.keys())
     summe = 0.0
     for k in keys:
         f1 = float(corpus_profile[k]) / corpus_size
@@ -67,6 +66,7 @@ def fit_parameters(handler):
     results = []
     for n in n_range:
         for L in L_range:
+            logging.info("Test parameters: n=%d, l=%d", n, L)
             authors, scores = create_ranking(handler, n, L)
             evaluation = handler.evalTesting(handler.unknowns, authors)
             results.append((evaluation["accuracy"], n, L))
@@ -83,4 +83,4 @@ def main(corpus):
 
 # Save results to json-file out.json (passing 'scores' is optional)
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s: %(message)s')
-main("pan12I")
+main("C10")
