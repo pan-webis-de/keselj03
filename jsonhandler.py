@@ -83,9 +83,7 @@ class Jsonhandler:
                 if scores != None:
                     failscore += scores[i]
         result = { "fail" : fail, "success": succ, "accuracy":
-                succ/float(succ+fail), 
-                "fail score": failscore/fail,
-                "success score": sucscore/succ }
+                succ/float(succ+fail) }
         return result
 
     def storeJson(self, texts, cands, scores = None):
@@ -93,7 +91,8 @@ class Jsonhandler:
         if scores == None:
                 scores = [1 for text in texts]
         for i in range(len(texts)):
-                answers.append({"unknown_text": texts[i], "author": cands[i], "score": scores[i]})
+                answers.append({"unknown_text":
+                    os.path.basename(texts[i]), "author": cands[i], "score": scores[i]})
         f = open(os.path.join(self.corpusdir, self.OUT_FNAME), "w")
         json.dump({"answers": answers}, f, indent=2)
         f.close()
