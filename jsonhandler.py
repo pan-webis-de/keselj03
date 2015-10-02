@@ -4,96 +4,98 @@
 # upath - path of the 'unknown' dir in the corpus (from json)
 # candidates - list of candidate author names (from json)
 # unknowns - list of unknown filenames (from json)
-# trainings - dictionary with lists of filenames of trainingtexts for each author
+# trainings - dictionary with lists of filenames of trainingstexts for each author
 # 	{"candidate2":["file1.txt", "file2.txt", ...], "candidate2":["file1.txt", ...] ...}
 
 # Usage:
 # loadJson(corpusname), with corpusname from commandline
 # OPTIONAL: loadTraining()
-# OPTIONAL: getTrainingText(jsonhandler.candidate[i], jsonhandler.trainings[jsonhandler.candidates[i]][j]), gets trainingtext j from candidate i as a string
+# OPTIONAL: getTrainingText(jsonhandler.candidate[i], jsonhandler.trainingss[jsonhandler.candidates[i]][j]), gets trainingsstext j from candidate i as a string
 # getUnknownText(jsonhandler.unknowns[i]), gets unknown text i as a string
 # storeJson(candidates, texts, scores), with list of candidates as candidates (jsonhandler.candidates can be used), list of texts as texts and list of scores as scores, last argument can be ommitted
 
-'''
-EXAMPLE:
-
-import jsonhandler
-
-candidates = jsonhandler.candidates
-unknowns = jsonhandler.unknowns
-jsonhandler.loadJson("testcorpus")
-
-# If you want to do training:
-jsonhandler.loadTraining()
-for cand in candidates:
-	for file in jsonhandler.trainings[cand]:
-		# Get content of training file 'file' of candidate 'cand' as a string with:
-		# jsonhandler.getTrainingText(cand, file)
-
-# Create lists for your answers (and scores)
-authors = []
-scores = []
-
-for file in unknowns:
-	# Get content of unknown file 'file' as a string with:
-	# jsonhandler.getUnknownText(file)
-	# Determine author of the file, and score (optional)
-	author = "oneAuthor"
-	score = 0.5
-	authors.append(author)
-	scores.append(score)
-
-# Save results to json-file out.json (passing 'scores' is optional)
-jsonhandler.storeJson(unknowns, authors, scores)
-'''
-
+import math
 import os, json
 
-META_FNAME = "meta-file.json"
-OUT_FNAME = "out.json"
+class Jsonhandler:
+    def __init__(self, corpus, meta = "meta-file.json", out = "out.json"):
+        self.META_FNAME = meta
+        self.OUT_FNAME = out
+	self.corpusdir = corpus
+	with open(os.path.join(self.corpusdir, self.META_FNAME), "r") as mfile:
+	    self.metajson = json.load(mfile)
+	self.upath = os.path.join(self.corpusdir, self.metajson["folder"])
 
-def loadJson(corpus):
-	global corpusdir, upath, candidates, unknowns
-	corpusdir += corpus
-	mfile = open(os.path.join(corpusdir, META_FNAME), "r")
-	metajson = json.load(mfile)
-	mfile.close()
+	self.candidates = [author["author-name"] for author in self.metajson["candidate-authors"]]
+        self.trainings = dict()
+        self.unknowns = []
+        self.ground_truth = None
 
-	upath += os.path.join(corpusdir, metajson["folder"])
-	candidates += [author["author-name"] for author in metajson["candidate-authors"]]
-	unknowns += [text["unknown-text"] for text in metajson["unknown-texts"]]
+    def loadTraining(self, ratio = 0.1):
+        self.ground_truth = dict() 
+	self.unknowns = [os.path.join(self.upath, text["unknown-text"]) for
+                text in self.metajson["unknown-texts"]]
+        for cand in self.candidates:
+            texts = []
+            for subdir, dirs, files in os.walk(os.path.join(self.corpusdir, cand)):
+                    for doc in files:
+                            texts.append(doc)
+            split = int(math.ceil(ratio * len(texts)))
+            for doc in texts[:split]:
+                complete_path = os.path.join(self.corpusdir,cand,doc)
+                self.unknowns.append(complete_path)
+                self.ground_truth[complete_path] = cand
+            self.trainings[cand] = texts[split:]
 
-def getUnknownText(fname):
-	dfile = open(os.path.join(upath, fname))
-	s = dfile.read()
-	dfile.close()
-	return s
+    def loadTesting(self):
+        self.groundtruth = None 
+        self.unknowns = [os.path.join(self.upath, text["unknown-text"]) for
+                text in self.metajson["unknown-texts"]]
+        for cand in self.candidates:
+                self.trainings[cand] = []
+                for subdir, dirs, files in os.walk(os.path.join(self.corpusdir, cand)):
+                        for doc in files:
+                                self.trainings[cand].append(doc)
 
-def loadTraining():
-	for cand in candidates:
-		trainings[cand] = []
-		for subdir, dirs, files in os.walk(os.path.join(corpusdir, cand)):
-			for doc in files:
-				trainings[cand].append(doc)
+    def getUnknownText(self,fname):
+        dfile = open(fname)
+        s = dfile.read()
+        dfile.close()
+        return s
 
-def getTrainingText(cand, fname):
-	dfile = open(os.path.join(corpusdir, cand, fname))
-	s = dfile.read()
-	dfile.close()
-	return s
+    def getTrainingText(self,cand, fname):
+        dfile = open(os.path.join(self.corpusdir, cand, fname))
+        s = dfile.read()
+        dfile.close()
+        return s
 
-def storeJson(texts, cands, scores = None):
-	answers = []
-	if scores == None:
-		scores = [1 for text in texts]
-	for i in range(len(texts)):
-		answers.append({"unknown_text": texts[i], "author": cands[i], "score": scores[i]})
-	f = open(os.path.join(corpusdir, OUT_FNAME), "w")
-	json.dump({"answers": answers}, f, indent=2)
-	f.close()
+    def evalTesting(self, texts, cands, scores = None):
+        succ = 0
+        fail = 0
+        sucscore = 0
+        failscore = 0
+        for i in range(len(texts)):
+        #for i in range(len(ojson["answers"])):
+            if self.ground_truth[i]== cands[i]:
+                succ += 1
+                if scores != None:
+                    sucscore += scores[i]
+            else:
+                fail += 1
+                if scores != None:
+                    failscore += scores[i]
+        result = { "fail" : fail, "success": succ, "accuracy":
+                succ/float(succ+fail), 
+                "fail score": failscore/fail,
+                "success score": sucscore/succ }
+        return result
 
-corpusdir = ""
-upath = ""
-candidates = []
-unknowns = []
-trainings = {}
+    def storeJson(self, texts, cands, scores = None):
+        answers = []
+        if scores == None:
+                scores = [1 for text in texts]
+        for i in range(len(texts)):
+                answers.append({"unknown_text": texts[i], "author": cands[i], "score": scores[i]})
+        f = open(os.path.join(self.corpusdir, self.OUT_FNAME), "w")
+        json.dump({"answers": answers}, f, indent=2)
+        f.close()
