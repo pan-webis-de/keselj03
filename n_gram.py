@@ -7,7 +7,7 @@ import logging
 def find_ngrams(input_list, n):
     return zip(*[input_list[i:] for i in range(n)])
 
-def dissimilarity(corpus_profile, corpus_size, unknown_profile,
+def dissimilarity(corpus_profile, corpus_size, unknown_profile, unknown_size):
     keys = set(corpus_profile.keys()) | set(unknown_profile.keys())
     summe = 0.0
     for k in keys:
