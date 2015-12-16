@@ -12,3 +12,4 @@ The subfolder must include:
 - set of unknown texts
 - meta-file
 
+The results are saved to the json-file out.json in in the subfolder. 
