@@ -2,7 +2,7 @@
 
 This is a reimplementation of the approach to authorship attribution originally described in
 
-> V. Keselj, F. Peng, N. Cercone, and C. Thomas. [N-gram-based author profiles for authorship attribution](http://web.cs.dal.ca/~vlado/papers/pacling03.pdf). In Proc. of ACL. pp. 255-264, 2003 [[paper](http://web.cs.dal.ca/~vlado/papers/pacling03.pdf)]
+> Vlado Kešelj, Fuchun Peng, Nick Cercone, and Calvin Thomas. [N-gram-based author profiles for authorship attribution](http://web.cs.dal.ca/~vlado/papers/pacling03.pdf). In Proc. of ACL. pp. 255-264, 2003 [[paper](http://web.cs.dal.ca/~vlado/papers/pacling03.pdf)]
 
 It was reimplemented as part of a science reproducibility study alongside [14 other authorship attribution approaches](https://github.com/search?q="Who+wrote+the+web"+user:pan-webis-de). The results of the reproducibility study can be found in
 
