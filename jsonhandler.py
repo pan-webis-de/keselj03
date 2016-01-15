@@ -46,6 +46,9 @@ class Jsonhandler:
                 for doc in files:
                     texts.append(doc)
             split = int(math.ceil(ratio * len(texts)))
+            # make that every author has at least one known text
+            if split == len(texts):
+                split = len(texts) - 1
             for doc in texts[:split]:
                 complete_path = os.path.join(self.corpusdir, cand, doc)
                 self.unknowns.append(complete_path)
@@ -92,13 +95,15 @@ class Jsonhandler:
                   succ / float(succ + fail)}
         return result
 
-    def storeJson(self, texts, cands, scores=None):
+    def storeJson(self, texts, cands, scores=None, path=None):
         answers = []
         if scores == None:
             scores = [1 for text in texts]
+        if path == None:
+            path = self.corpusdir
         for i in range(len(texts)):
             answers.append({"unknown_text":
                             os.path.basename(texts[i]), "author": cands[i], "score": scores[i]})
-        f = open(os.path.join(self.corpusdir, self.OUT_FNAME), "w")
+        f = open(os.path.join(path, self.OUT_FNAME), "w")
         json.dump({"answers": answers}, f, indent=2)
         f.close()
