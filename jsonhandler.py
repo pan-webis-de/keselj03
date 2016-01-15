@@ -12,69 +12,75 @@
 # OPTIONAL: loadTraining()
 # OPTIONAL: getTrainingText(jsonhandler.candidate[i], jsonhandler.trainingss[jsonhandler.candidates[i]][j]), gets trainingsstext j from candidate i as a string
 # getUnknownText(jsonhandler.unknowns[i]), gets unknown text i as a string
-# storeJson(candidates, texts, scores), with list of candidates as candidates (jsonhandler.candidates can be used), list of texts as texts and list of scores as scores, last argument can be ommitted
+# storeJson(candidates, texts, scores), with list of candidates as
+# candidates (jsonhandler.candidates can be used), list of texts as texts
+# and list of scores as scores, last argument can be ommitted
 
 import math
-import os, json
+import os
+import json
+
 
 class Jsonhandler:
-    def __init__(self, corpus, meta = "meta-file.json", out = "out.json"):
+
+    def __init__(self, corpus, meta="meta-file.json", out="out.json"):
         self.META_FNAME = meta
         self.OUT_FNAME = out
-	self.corpusdir = corpus
-	with open(os.path.join(self.corpusdir, self.META_FNAME), "r") as mfile:
-	    self.metajson = json.load(mfile)
-	self.upath = os.path.join(self.corpusdir, self.metajson["folder"])
+        self.corpusdir = corpus
+        with open(os.path.join(self.corpusdir, self.META_FNAME), "r") as mfile:
+            self.metajson = json.load(mfile)
+        self.upath = os.path.join(self.corpusdir, self.metajson["folder"])
 
-	self.candidates = [author["author-name"] for author in self.metajson["candidate-authors"]]
+        self.candidates = [author["author-name"]
+                           for author in self.metajson["candidate-authors"]]
         self.trainings = dict()
         self.unknowns = []
         self.ground_truth = None
 
-    def loadTraining(self, ratio = 0.1):
-        self.ground_truth = dict() 
-	self.unknowns = [] 
+    def loadTraining(self, ratio=0.1):
+        self.ground_truth = dict()
+        self.unknowns = []
         for cand in self.candidates:
             texts = []
             for subdir, dirs, files in os.walk(os.path.join(self.corpusdir, cand)):
-                    for doc in files:
-                            texts.append(doc)
+                for doc in files:
+                    texts.append(doc)
             split = int(math.ceil(ratio * len(texts)))
             for doc in texts[:split]:
-                complete_path = os.path.join(self.corpusdir,cand,doc)
+                complete_path = os.path.join(self.corpusdir, cand, doc)
                 self.unknowns.append(complete_path)
                 self.ground_truth[complete_path] = cand
             self.trainings[cand] = texts[split:]
 
     def loadTesting(self):
-        self.groundtruth = None 
+        self.groundtruth = None
         self.unknowns = [os.path.join(self.upath, text["unknown-text"]) for
-                text in self.metajson["unknown-texts"]]
+                         text in self.metajson["unknown-texts"]]
         for cand in self.candidates:
-                self.trainings[cand] = []
-                for subdir, dirs, files in os.walk(os.path.join(self.corpusdir, cand)):
-                        for doc in files:
-                                self.trainings[cand].append(doc)
+            self.trainings[cand] = []
+            for subdir, dirs, files in os.walk(os.path.join(self.corpusdir, cand)):
+                for doc in files:
+                    self.trainings[cand].append(doc)
 
-    def getUnknownText(self,fname):
+    def getUnknownText(self, fname):
         dfile = open(fname)
         s = dfile.read()
         dfile.close()
         return s
 
-    def getTrainingText(self,cand, fname):
+    def getTrainingText(self, cand, fname):
         dfile = open(os.path.join(self.corpusdir, cand, fname))
         s = dfile.read()
         dfile.close()
         return s
 
-    def evalTesting(self, texts, cands, scores = None):
+    def evalTesting(self, texts, cands, scores=None):
         succ = 0
         fail = 0
         sucscore = 0
         failscore = 0
         for i in range(len(texts)):
-            if self.ground_truth[texts[i]]== cands[i]:
+            if self.ground_truth[texts[i]] == cands[i]:
                 succ += 1
                 if scores != None:
                     sucscore += scores[i]
@@ -82,17 +88,17 @@ class Jsonhandler:
                 fail += 1
                 if scores != None:
                     failscore += scores[i]
-        result = { "fail" : fail, "success": succ, "accuracy":
-                succ/float(succ+fail) }
+        result = {"fail": fail, "success": succ, "accuracy":
+                  succ / float(succ + fail)}
         return result
 
-    def storeJson(self, texts, cands, scores = None):
+    def storeJson(self, texts, cands, scores=None):
         answers = []
         if scores == None:
-                scores = [1 for text in texts]
+            scores = [1 for text in texts]
         for i in range(len(texts)):
-                answers.append({"unknown_text":
-                    os.path.basename(texts[i]), "author": cands[i], "score": scores[i]})
+            answers.append({"unknown_text":
+                            os.path.basename(texts[i]), "author": cands[i], "score": scores[i]})
         f = open(os.path.join(self.corpusdir, self.OUT_FNAME), "w")
         json.dump({"answers": answers}, f, indent=2)
         f.close()
