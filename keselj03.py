@@ -1,6 +1,7 @@
-from jsonhandler import Jsonhandler
 from collections import Counter
 
+import argparse
+import jsonhandler
 import logging
 
 
@@ -18,16 +19,16 @@ def dissimilarity(corpus_profile, corpus_size, unknown_profile, unknown_size):
     return summe
 
 
-def create_ranking(handler, n, L):
+def create_ranking(n, L):
 # If you want to do training:
     bigram_profile = []
     counts = []     # summ of all n-gram
-    for cand in handler.candidates:
+    for cand in jsonhandler.candidates:
         text = ''
-        for file in handler.trainings[cand]:
+        for file in jsonhandler.trainings[cand]:
                     # Get content of training file 'file' of candidate 'cand'
                     # as a string with:
-                text = text + handler.getTrainingText(cand, file)
+                text = text + jsonhandler.getTrainingText(cand, file)
         bigram_all = Counter(find_ngrams(text, n))
 
         counts.append(sum(bigram_all.values()))
@@ -38,21 +39,21 @@ def create_ranking(handler, n, L):
     authors = []
     scores = []
 
-    for file in handler.unknowns:
+    for file in jsonhandler.unknowns:
         result = []
         # Get content of unknown file 'file' as a string with:
         test = ''
-        test = handler.getUnknownText(file)
+        test = jsonhandler.getUnknownText(file)
         # Determine author of the file, and score (optional)
         bigram_all = Counter(find_ngrams(test, n))
         counts_test = sum(bigram_all.values())
         bigram_test = Counter(dict(bigram_all.most_common(L)))
 
-        for cand_nu in range(len(handler.candidates)):
+        for cand_nu in range(len(jsonhandler.candidates)):
             result.append(
                 dissimilarity(bigram_profile[cand_nu], counts[cand_nu],
                               bigram_test, counts_test))
-        author = handler.candidates[result.index(min(result))]
+        author = jsonhandler.candidates[result.index(min(result))]
 
 #    author = "oneAuthor"
         score = 1
@@ -62,32 +63,67 @@ def create_ranking(handler, n, L):
     return (authors, scores)
 
 
-def fit_parameters(handler):
+def fit_parameters():
     n_range = [3, 4, 5, 6]
     L_range = [500, 1000, 2000, 3000, 5000]
 #    n_range = [2,3]
 #    L_range = [20, 50, 100]
-    handler.loadTraining()
+    jsonhandler.loadTraining()
+    jsonhandler.loadGroundTruth()
     results = []
     for n in n_range:
         for L in L_range:
             logging.info("Test parameters: n=%d, l=%d", n, L)
-            authors, scores = create_ranking(handler, n, L)
-            evaluation = handler.evalTesting(handler.unknowns, authors)
+            authors, scores = create_ranking(n, L)
+            evaluation = evalTesting(jsonhandler.unknowns, authors)
             results.append((evaluation["accuracy"], n, L))
     return results
 
 
-def main(corpus):
-    handler = Jsonhandler(corpus)
-    parameters = fit_parameters(handler)
+def evalTesting(texts, cands, scores=None):
+    succ = 0
+    fail = 0
+    sucscore = 0
+    failscore = 0
+    for i in range(len(texts)):
+        if jsonhandler.trueAuthors[i] == cands[i]:
+            succ += 1
+            if scores != None:
+                sucscore += scores[i]
+        else:
+            fail += 1
+            if scores != None:
+                failscore += scores[i]
+    result = {"fail": fail, "success": succ, "accuracy":
+              succ / float(succ + fail)}
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description='keselj03')
+    parser.add_argument('-i',
+                        action='store',
+                        help='Path to input directory')
+    parser.add_argument('-o',
+                        action='store',
+                        help='Path to output directory')
+
+    args = vars(parser.parse_args())
+
+    corpusdir = args['i']
+    outputdir = args['o']
+
+    jsonhandler.loadJson(corpusdir)
+    parameters = fit_parameters()
     acc, n, L = max(parameters, key=lambda r: r[0])
     logging.info("Choose parameters: n=%d, l=%d", n, L)
-    handler.loadTesting()
-    authors, scores = create_ranking(handler, n, L)
-    handler.storeJson(handler.unknowns, authors, scores)
+    #jsonhandler.loadTesting()
+    authors, scores = create_ranking(n, L)
+    jsonhandler.storeJson(outputdir, jsonhandler.unknowns, authors, scores)
 
-# Save results to json-file out.json (passing 'scores' is optional)
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s %(levelname)s: %(message)s')
-main("C10")
+
+if __name__ == "__main__":
+    # execute only if run as a script
+    logging.basicConfig(level=logging.ERROR,
+                        format='%(asctime)s %(levelname)s: %(message)s')
+    main()
